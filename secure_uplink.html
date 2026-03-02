@@ -3,130 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sovereign OS - Connection Lost</title>
+    <title>Sovereign OS - Secure Uplink Terminal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <style>
-        body { 
-            overflow: hidden; 
-            background: #000;
-            position: relative;
-        }
-
-        /* Efecto de estática/ruido de fondo */
-        body::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: url('https://upload.wikimedia.org/wikipedia/commons/5/5a/Canal_Static.gif');
-            opacity: 0.03;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* Contenedor de Error Crítico */
-        .error-container {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-        }
-
-        .glitch-icon {
-            font-size: 80px;
-            color: #450a0a;
-            animation: glitch 2s infinite;
-        }
-
-        @keyframes glitch {
-            0% { transform: translate(0); opacity: 1; }
-            20% { transform: translate(-2px, 2px); opacity: 0.8; }
-            40% { transform: translate(-2px, -2px); opacity: 1; }
-            60% { transform: translate(2px, 2px); opacity: 0.6; }
-            80% { transform: translate(2px, -2px); opacity: 1; }
-            100% { transform: translate(0); }
-        }
-
-        .terminal-dead {
+        body { overflow: hidden; background: radial-gradient(circle at center, #080808 0%, #000 100%); }
+        
+        .terminal-box {
             font-family: 'Courier New', Courier, monospace;
-            background: rgba(20, 0, 0, 0.4);
-            border: 1px solid #450a0a;
-            color: #ef4444;
-            padding: 20px;
-            border-radius: 8px;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #1a1a1a;
+            height: 140px;
+            overflow: hidden;
+        }
+        .log-line { font-size: 8px; margin-bottom: 4px; opacity: 0; transform: translateX(-5px); }
+        .log-active { animation: slideIn 0.2s forwards; color: #3b82f6; }
+        .log-warning { color: #ef4444; }
+
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+
+        /* Botón Maestro */
+        .main-btn {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: #000;
+            border: 3px solid #7f1d1d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.5s ease;
+            cursor: pointer;
         }
 
-        .signal-bar {
-            width: 4px;
+        .status-alert .main-btn {
+            animation: pulse-red 1.5s infinite;
+            border-color: #dc2626;
+        }
+        .status-alert .main-btn i { color: #dc2626; }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+            70% { box-shadow: 0 0 25px 10px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+
+        .active-mode .main-btn {
+            border-color: #3b82f6;
+            animation: none;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+        }
+        .active-mode .main-btn i { color: #3b82f6; }
+
+        .progress-container {
+            width: 100%;
+            max-width: 200px;
+            height: 2px;
             background: #111;
-            margin: 0 1px;
+            margin-top: 15px;
+            overflow: hidden;
+            display: none;
         }
-        .signal-dead {
-            height: 10px;
-            background: #450a0a;
+        .progress-bar { width: 0%; height: 100%; background: #3b82f6; }
+
+        .scanning-text {
+            display: inline-block;
+            overflow: hidden;
+            white-space: nowrap;
+            border-right: 2px solid #3b82f6;
+            animation: typing 1s steps(20, end), blink .75s step-end infinite;
         }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        @keyframes blink { from, to { border-color: transparent } 50% { border-color: #3b82f6 } }
     </style>
 </head>
 <body class="text-white antialiased">
 
     <header class="p-6 flex justify-between items-center border-b border-zinc-900 bg-black">
-        <img src="logo.png" alt="Logo" class="h-6 w-auto opacity-30">
+        <img src="logo.png" alt="Logo" class="h-6 w-auto">
         <div class="text-right">
-            <span class="text-[8px] font-black text-zinc-700 uppercase tracking-widest italic">Uplink Disabled</span>
+            <span id="sys-status" class="text-[8px] font-black text-red-600 uppercase tracking-widest">Enlace Vulnerable</span>
         </div>
     </header>
 
-    <main class="flex flex-col items-center justify-center h-[80vh] p-8 space-y-12">
+    <main class="flex flex-col items-center justify-around h-[85vh] p-6">
         
-        <div class="error-container">
-            <i class="fas fa-unlink glitch-icon"></i>
-            <div class="mt-4 flex justify-center items-end h-8">
-                <div class="signal-bar signal-dead"></div>
-                <div class="signal-bar signal-dead"></div>
-                <div class="signal-bar h-1"></div>
-                <div class="signal-bar h-1"></div>
-                <div class="signal-bar h-1"></div>
+        <div class="w-full max-w-sm terminal-box p-4 rounded-lg border border-zinc-800 shadow-2xl">
+            <div id="log-container">
+                <div class="log-line log-warning opacity-100">> ALERTA: TÚNEL NO CIFRADO</div>
+                <div class="log-line text-zinc-600 opacity-100">> ESPERANDO HANDSHAKE MANUAL...</div>
             </div>
         </div>
 
-        <div class="w-full max-w-sm terminal-dead">
-            <p class="font-black mb-2 leading-tight">ERROR_CODE: SIG_LOST_404</p>
-            <p class="opacity-70 border-t border-red-900/30 pt-2">
-                > HARDWARE ENCRYPTOR: NO RESPONDING<br>
-                > LOCATION SERVICES: BLOCKED BY SECTOR<br>
-                > PENDING AUTH: TIMEOUT<br>
-                > STATUS: SECURE CONNECTION UNAVAILABLE
-            </p>
+        <div id="terminal-root" class="status-alert flex flex-col items-center">
+            <div class="main-btn" onclick="startUplinkSequence()">
+                <i class="fas fa-satellite-dish text-5xl"></i>
+            </div>
+            
+            <div id="progress-wrap" class="progress-container">
+                <div id="p-bar" class="progress-bar"></div>
+            </div>
+            
+            <p id="counter-text" class="text-[9px] font-mono text-center mt-3 text-zinc-500"></p>
+
+            <button id="disconnect-btn" onclick="disconnectUplink()" class="hidden mt-6 px-8 py-2 border border-red-900 bg-red-950/20 rounded text-[9px] font-black uppercase text-red-500 active:scale-95 transition-all">
+                <i class="fas fa-times-circle mr-2"></i> Terminar Enlace
+            </button>
         </div>
 
-        <div class="text-center space-y-2">
-            <p class="text-[10px] font-black text-red-900 uppercase tracking-[0.4em]">Sin Acceso a Red</p>
-            <p class="text-[9px] text-zinc-600 italic px-10 leading-relaxed">
-                La posibilidad de conexión ha sido restringida por el administrador o por interferencia en el cuadrante.
-            </p>
-        </div>
-
-        <div class="w-full max-w-xs opacity-20 grayscale">
-            <div class="flex justify-between items-center px-4 pt-8 border-t border-zinc-900">
-                <div class="text-left">
+        <div class="w-full max-w-xs">
+            <div class="flex justify-between items-center px-4 h-12 border-t border-zinc-900 pt-4">
+                <div class="text-left w-24">
                     <p class="text-[7px] text-zinc-500 uppercase font-black">Origin</p>
-                    <p class="text-[11px] font-bold italic">OFFLINE</p>
+                    <p id="origin-label" class="text-[11px] font-bold">---</p>
                 </div>
-                <i class="fas fa-slash text-zinc-800"></i>
-                <div class="text-right">
+                <div id="connection-line" class="opacity-0 transition-opacity duration-1000">
+                    <i class="fas fa-arrows-alt-h text-blue-500"></i>
+                </div>
+                <div class="text-right w-24">
                     <p class="text-[7px] text-zinc-500 uppercase font-black">Target</p>
-                    <p class="text-[11px] font-bold italic">OFFLINE</p>
+                    <p id="target-label" class="text-[11px] font-bold">---</p>
                 </div>
             </div>
         </div>
-
     </main>
 
     <script>
-        localStorage.setItem('secureNetworkActive', 'false');
+        const root = document.getElementById('terminal-root');
+        const log = document.getElementById('log-container');
+        const sysStatus = document.getElementById('sys-status');
+        const pBar = document.getElementById('p-bar');
+        const pWrap = document.getElementById('progress-wrap');
+        const counterText = document.getElementById('counter-text');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const originLabel = document.getElementById('origin-label');
+        const targetLabel = document.getElementById('target-label');
+        const connLine = document.getElementById('connection-line');
+
+        function addLog(text, type = 'blue') {
+            const line = document.createElement('div');
+            line.className = 'log-line log-active';
+            if(type === 'warning') line.classList.add('log-warning');
+            line.innerText = `> ${text}`;
+            log.appendChild(line);
+            if (log.children.length > 7) log.removeChild(log.children[0]);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('secureNetworkActive') === 'true') {
+                setFinalState();
+            }
+        });
+
+        function startUplinkSequence() {
+            if (root.classList.contains('active-mode')) return;
+
+            root.classList.remove('status-alert');
+            pWrap.style.display = 'block';
+            addLog("AUTORIZACIÓN RECIBIDA.", 'blue');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 2;
+                pBar.style.width = progress + '%';
+                counterText.innerText = `CONECTANDO: ${progress}%`;
+
+                if (progress === 10) {
+                    addLog("TRIANGULANDO POSICIÓN LOCAL...");
+                    originLabel.innerHTML = '<span class="scanning-text">RIAD, SA</span>';
+                }
+                if (progress === 40) {
+                    addLog("BUSCANDO NODO TARGET...");
+                    targetLabel.innerHTML = '<span class="scanning-text text-blue-500">DETECTANDO...</span>';
+                }
+                if (progress === 60) {
+                    addLog("NODO ENCONTRADO: REGIÓN DE MADRID");
+                    targetLabel.innerHTML = '<span class="scanning-text">MADRID, ES</span>';
+                    connLine.classList.replace('opacity-0', 'opacity-100');
+                }
+                if (progress === 80) addLog("ESTABLECIENDO TÚNEL SEGURO...");
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setFinalState();
+                    localStorage.setItem('secureNetworkActive', 'true');
+                }
+            }, 50);
+        }
+
+        function setFinalState() {
+            root.classList.remove('status-alert');
+            root.classList.add('active-mode');
+            pWrap.style.display = 'none';
+            sysStatus.innerText = "ENLACE CIFRADO";
+            sysStatus.className = "text-[8px] font-black text-blue-500 uppercase tracking-widest";
+            counterText.innerText = "ESTADO: CONECTADO";
+            counterText.classList.replace('text-zinc-500', 'text-blue-500');
+            disconnectBtn.classList.remove('hidden');
+            originLabel.innerText = "RIAD, SA";
+            targetLabel.innerText = "MADRID, ES";
+            connLine.classList.add('opacity-100');
+            addLog("ENLACE PUNTO A PUNTO ESTABLECIDO.");
+        }
+
+        function disconnectUplink() {
+            addLog("CERRANDO TÚNEL...", 'warning');
+            localStorage.setItem('secureNetworkActive', 'false');
+            
+            setTimeout(() => {
+                root.classList.remove('active-mode');
+                root.classList.add('status-alert');
+                sysStatus.innerText = "Enlace Vulnerable";
+                sysStatus.className = "text-[8px] font-black text-red-600 uppercase tracking-widest";
+                counterText.innerText = "";
+                disconnectBtn.classList.add('hidden');
+                originLabel.innerText = "---";
+                targetLabel.innerText = "---";
+                connLine.classList.replace('opacity-100', 'opacity-0');
+                addLog("STANDBY: ENLACE TERMINADO.", 'warning');
+            }, 800);
+        }
     </script>
 </body>
 </html>
