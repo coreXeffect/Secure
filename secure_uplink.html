@@ -7,78 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <style>
-        body { overflow: hidden; background: radial-gradient(circle at center, #080808 0%, #000 100%); }
-        
-        .terminal-box {
-            font-family: 'Courier New', Courier, monospace;
-            background: rgba(0, 0, 0, 0.9);
-            border: 1px solid #1a1a1a;
-            height: 140px;
-            overflow: hidden;
-        }
-        .log-line { font-size: 8px; margin-bottom: 4px; opacity: 0; transform: translateX(-5px); }
-        .log-active { animation: slideIn 0.2s forwards; color: #3b82f6; }
-        .log-warning { color: #ef4444; }
-
-        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
-
-        /* Botón Maestro */
-        .main-btn {
-            width: 160px;
-            height: 160px;
-            border-radius: 50%;
-            background: #000;
-            border: 3px solid #7f1d1d;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.5s ease;
-            cursor: pointer;
-        }
-
-        .status-alert .main-btn {
-            animation: pulse-red 1.5s infinite;
-            border-color: #dc2626;
-        }
-        .status-alert .main-btn i { color: #dc2626; }
-
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-            70% { box-shadow: 0 0 25px 10px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-        }
-
-        .active-mode .main-btn {
-            border-color: #3b82f6;
-            animation: none;
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
-        }
-        .active-mode .main-btn i { color: #3b82f6; }
-
-        .progress-container {
-            width: 100%;
-            max-width: 200px;
-            height: 2px;
-            background: #111;
-            margin-top: 15px;
-            overflow: hidden;
-            display: none;
-        }
-        .progress-bar { width: 0%; height: 100%; background: #3b82f6; }
-
-        .scanning-text {
-            display: inline-block;
-            overflow: hidden;
-            white-space: nowrap;
-            border-right: 2px solid #3b82f6;
-            animation: typing 1s steps(20, end), blink .75s step-end infinite;
-        }
-        @keyframes typing { from { width: 0 } to { width: 100% } }
-        @keyframes blink { from, to { border-color: transparent } 50% { border-color: #3b82f6 } }
-    </style>
 </head>
-<body class="text-white antialiased">
+<body class="text-white antialiased secure-uplink-body">
 
     <header class="p-6 flex justify-between items-center border-b border-zinc-900 bg-black">
         <img src="logo.png" alt="Logo" class="h-6 w-auto">
@@ -88,7 +18,32 @@
     </header>
 
     <main class="flex flex-col items-center justify-around h-[85vh] p-6">
-        
+
+        <!-- Entrada de código de acceso (modo agente secreto) -->
+        <div class="w-full max-w-sm mb-3">
+            <label for="access-code-input" class="block text-[8px] uppercase tracking-widest text-zinc-500 font-black">
+                Código de acceso
+            </label>
+            <div class="flex gap-2 mt-1">
+                <input
+                    id="access-code-input"
+                    type="text"
+                    placeholder="Introduce tu código"
+                    class="flex-1 bg-black/60 border border-zinc-800 rounded px-2 py-1 text-[11px] font-mono focus:outline-none focus:border-blue-500"
+                    autocomplete="off"
+                >
+                <button
+                    id="access-code-btn"
+                    onclick="verifyAccessCode()"
+                    class="px-3 py-1 border border-zinc-800 bg-zinc-900/60 rounded text-[8px] font-black uppercase tracking-widest hover:border-blue-500 hover:text-blue-400 active:scale-95 transition-all"
+                >
+                    Validar
+                </button>
+            </div>
+            <p id="access-feedback" class="text-[9px] mt-1 font-mono text-zinc-500 h-4"></p>
+        </div>
+
+        <!-- Terminal principal: primero se verifica el código, luego aparece el control de uplink -->
         <div class="w-full max-w-sm terminal-box p-4 rounded-lg border border-zinc-800 shadow-2xl">
             <div id="log-container">
                 <div class="log-line log-warning opacity-100">> ALERTA: TÚNEL NO CIFRADO</div>
@@ -96,7 +51,7 @@
             </div>
         </div>
 
-        <div id="terminal-root" class="status-alert flex flex-col items-center">
+        <div id="terminal-root" class="status-alert flex flex-col items-center hidden">
             <div class="main-btn" onclick="startUplinkSequence()">
                 <i class="fas fa-satellite-dish text-5xl"></i>
             </div>
@@ -140,23 +95,141 @@
         const originLabel = document.getElementById('origin-label');
         const targetLabel = document.getElementById('target-label');
         const connLine = document.getElementById('connection-line');
+        const accessCodeInput = document.getElementById('access-code-input');
+        const accessFeedback = document.getElementById('access-feedback');
+
+        let secureConfig = null;
+        let authenticatedUser = null;
+        let isAccessSequenceRunning = false;
 
         function addLog(text, type = 'blue') {
             const line = document.createElement('div');
             line.className = 'log-line log-active';
-            if(type === 'warning') line.classList.add('log-warning');
+            if (type === 'warning') {
+                line.classList.add('log-warning');
+            }
+            if (type === 'success') {
+                // tono verde para mensajes de aceptación
+                line.style.color = '#22c55e';
+            }
             line.innerText = `> ${text}`;
             log.appendChild(line);
             if (log.children.length > 7) log.removeChild(log.children[0]);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function playLogSequence(sequence, delay = 500, onComplete) {
+            if (!sequence || !sequence.length) {
+                if (onComplete) onComplete();
+                return;
+            }
+
+            // Evita solapar animaciones de acceso
+            isAccessSequenceRunning = true;
+            let index = 0;
+
+            const step = () => {
+                const item = sequence[index];
+                if (!item) {
+                    isAccessSequenceRunning = false;
+                    if (onComplete) onComplete();
+                    return;
+                }
+                addLog(item.text, item.type || 'blue');
+                index++;
+                if (index < sequence.length) {
+                    setTimeout(step, delay);
+                } else {
+                    isAccessSequenceRunning = false;
+                    if (onComplete) onComplete();
+                }
+            };
+
+            step();
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('secureuplink.json');
+                if (!response.ok) throw new Error('No se pudo cargar la configuración.');
+                secureConfig = await response.json();
+                addLog("CONFIGURACIÓN DE ENLACE CARGADA.");
+            } catch (error) {
+                addLog("ERROR: CONFIGURACIÓN NO DISPONIBLE. CONTACTA CON SOPORTE.", 'warning');
+            }
+
             if (localStorage.getItem('secureNetworkActive') === 'true') {
                 setFinalState();
             }
         });
 
+        function verifyAccessCode() {
+            if (isAccessSequenceRunning) {
+                return;
+            }
+
+            if (!secureConfig || !Array.isArray(secureConfig.usuarios)) {
+                accessFeedback.innerText = "Error de configuración. Intenta más tarde.";
+                accessFeedback.classList.remove('text-emerald-400');
+                accessFeedback.classList.add('text-red-500');
+                addLog("CONFIGURACIÓN NO DISPONIBLE. IMPOSIBLE VERIFICAR CÓDIGO.", 'warning');
+                return;
+            }
+
+            const rawCode = accessCodeInput.value.trim();
+            if (!rawCode) {
+                accessFeedback.innerText = "Introduce un código válido.";
+                accessFeedback.classList.remove('text-emerald-400');
+                accessFeedback.classList.add('text-red-500');
+                return;
+            }
+
+            const code = rawCode.toUpperCase();
+            const user = secureConfig.usuarios.find(u => (u.codigo || '').toUpperCase() === code);
+
+            // Secuencia base tipo agente secreto
+            const baseSequence = [
+                { text: "INICIALIZANDO..." },
+                { text: "CARGANDO CÓDIGO DE SEGURIDAD..." }
+            ];
+
+            if (!user) {
+                authenticatedUser = null;
+                accessFeedback.innerText = "ACCESO DENEGADO";
+                accessFeedback.classList.remove('text-emerald-400');
+                accessFeedback.classList.add('text-red-500');
+                const sequence = baseSequence.concat([
+                    { text: "CÓDIGO DE SEGURIDAD RECHAZADO.", type: 'warning' }
+                ]);
+                playLogSequence(sequence, 550);
+                return;
+            }
+
+            authenticatedUser = user;
+            accessFeedback.innerText = "ACCESO CONCEDIDO";
+            accessFeedback.classList.remove('text-red-500');
+            accessFeedback.classList.add('text-emerald-400');
+
+            // Mostrar datos del JSON línea a línea, de forma secuencial (sin revelar target aún)
+            const sequence = baseSequence.concat([
+                { text: "CÓDIGO DE SEGURIDAD ACEPTADO.", type: 'success' },
+                { text: `SUJETO: ${user.usuario}` },
+                { text: `STATUS: ${user.status}` },
+                { text: `RELACIÓN: ${user.relacion}` },
+                { text: "EN ESPERA DE ORDEN PARA ABRIR TÚNEL..." }
+            ]);
+
+            // A partir de aquí, cuando termina la secuencia, se muestra el control de uplink
+            playLogSequence(sequence, 550, () => {
+                root.classList.remove('hidden');
+            });
+        }
+
         function startUplinkSequence() {
+            if (!authenticatedUser) {
+                addLog("IDENTIFICACIÓN REQUERIDA. INTRODUCE CÓDIGO DE ACCESO.", 'warning');
+                return;
+            }
+
             if (root.classList.contains('active-mode')) return;
 
             root.classList.remove('status-alert');
@@ -170,16 +243,18 @@
                 counterText.innerText = `CONECTANDO: ${progress}%`;
 
                 if (progress === 10) {
-                    addLog("TRIANGULANDO POSICIÓN LOCAL...");
-                    originLabel.innerHTML = '<span class="scanning-text">RIAD, SA</span>';
+                    const originText = secureConfig && secureConfig.origin ? secureConfig.origin : 'ORIGEN DESCONOCIDO';
+                    addLog(`TRIANGULANDO ORIGIN: ${originText}...`);
+                    originLabel.innerHTML = `<span class="scanning-text">${originText}</span>`;
                 }
                 if (progress === 40) {
                     addLog("BUSCANDO NODO TARGET...");
                     targetLabel.innerHTML = '<span class="scanning-text text-blue-500">DETECTANDO...</span>';
                 }
                 if (progress === 60) {
-                    addLog("NODO ENCONTRADO: REGIÓN DE MADRID");
-                    targetLabel.innerHTML = '<span class="scanning-text">MADRID, ES</span>';
+                    const targetText = authenticatedUser && authenticatedUser.target ? authenticatedUser.target : 'NODO DESCONOCIDO';
+                    addLog(`NODO ENCONTRADO: ${targetText}`);
+                    targetLabel.innerHTML = `<span class="scanning-text">${targetText}</span>`;
                     connLine.classList.replace('opacity-0', 'opacity-100');
                 }
                 if (progress === 80) addLog("ESTABLECIENDO TÚNEL SEGURO...");
@@ -195,15 +270,23 @@
         function setFinalState() {
             root.classList.remove('status-alert');
             root.classList.add('active-mode');
+            root.classList.remove('hidden');
             pWrap.style.display = 'none';
             sysStatus.innerText = "ENLACE CIFRADO";
             sysStatus.className = "text-[8px] font-black text-blue-500 uppercase tracking-widest";
             counterText.innerText = "ESTADO: CONECTADO";
             counterText.classList.replace('text-zinc-500', 'text-blue-500');
             disconnectBtn.classList.remove('hidden');
-            originLabel.innerText = "RIAD, SA";
-            targetLabel.innerText = "MADRID, ES";
+            const originText = secureConfig && secureConfig.origin ? secureConfig.origin : "RIAD, SA";
+            const targetText = authenticatedUser && authenticatedUser.target ? authenticatedUser.target : "MADRID, ES";
+            originLabel.innerText = originText;
+            targetLabel.innerText = targetText;
             connLine.classList.add('opacity-100');
+            if (authenticatedUser) {
+                addLog(`ENLACE ESTABLECIDO PARA: ${authenticatedUser.usuario}`);
+                addLog(`STATUS: ${authenticatedUser.status} | RELACIÓN: ${authenticatedUser.relacion}`);
+                addLog(`TARGET: ${authenticatedUser.target}`);
+            }
             addLog("ENLACE PUNTO A PUNTO ESTABLECIDO.");
         }
 
