@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sovereign OS - Connection Lost</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body class="text-white antialiased">
+
+    <header class="p-6 flex justify-between items-center border-b border-zinc-900 bg-black">
+        <img src="../logo.png" alt="Logo" class="h-6 w-auto opacity-30">
+        <div class="text-right">
+            <span class="text-[8px] font-black text-zinc-700 uppercase tracking-widest italic">Uplink Disabled</span>
+        </div>
+    </header>
+
+    <main class="flex flex-col items-center justify-center h-[80vh] p-8 space-y-12">
+        
+        <div class="error-container">
+            <i class="fas fa-unlink glitch-icon"></i>
+            <div class="mt-4 flex justify-center items-end h-8">
+                <div class="signal-bar signal-dead"></div>
+                <div class="signal-bar signal-dead"></div>
+                <div class="signal-bar h-1"></div>
+                <div class="signal-bar h-1"></div>
+                <div class="signal-bar h-1"></div>
+            </div>
+        </div>
+
+        <div class="w-full max-w-sm terminal-dead">
+            <p class="font-black mb-2 leading-tight">ERROR_CODE: SIG_LOST_404</p>
+            <p class="opacity-70 border-t border-red-900/30 pt-2">
+                > HARDWARE ENCRYPTOR: NO RESPONDING<br>
+                > LOCATION SERVICES: BLOCKED BY SECTOR<br>
+                > PENDING AUTH: TIMEOUT<br>
+                > STATUS: SECURE CONNECTION UNAVAILABLE
+            </p>
+        </div>
+
+        <div class="text-center space-y-2">
+            <p class="text-[10px] font-black text-red-900 uppercase tracking-[0.4em]">Sin Acceso a Red</p>
+            <p class="text-[9px] text-zinc-600 italic px-10 leading-relaxed">
+                La posibilidad de conexión ha sido restringida por el administrador o por interferencia en el cuadrante.
+            </p>
+        </div>
+
+        <div class="w-full max-w-xs opacity-20 grayscale">
+            <div class="flex justify-between items-center px-4 pt-8 border-t border-zinc-900">
+                <div class="text-left">
+                    <p class="text-[7px] text-zinc-500 uppercase font-black">Origin</p>
+                    <p class="text-[11px] font-bold italic">OFFLINE</p>
+                </div>
+                <i class="fas fa-slash text-zinc-800"></i>
+                <div class="text-right">
+                    <p class="text-[7px] text-zinc-500 uppercase font-black">Target</p>
+                    <p class="text-[11px] font-bold italic">OFFLINE</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="bottom-nav"></div>
+
+    <script src="../nav.js"></script>
+    <script>
+        renderBottomNav('../');
+    </script>
+
+    <script>
+        localStorage.setItem('secureNetworkActive', 'false');
+    </script>
+</body>
+</html>
